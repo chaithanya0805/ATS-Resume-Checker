@@ -1,0 +1,10 @@
+com\example\resumechecker\service\ResumeAnalyzerService.class
+com\example\resumechecker\model\AnalysisResult.class
+com\example\resumechecker\controller\GlobalExceptionHandler.class
+com\example\resumechecker\model\AnalysisResult$AnalysisResultBuilder.class
+com\example\resumechecker\dto\ResumeCheckResponse.class
+com\example\resumechecker\ResumecheckerApplication.class
+com\example\resumechecker\config\WebConfig.class
+com\example\resumechecker\controller\ResumeController.class
+com\example\resumechecker\repository\AnalysisResultRepository.class
+com\example\resumechecker\dto\ResumeCheckResponse$ResumeCheckResponseBuilder.class
