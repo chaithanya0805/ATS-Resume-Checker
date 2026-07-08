@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ScanLine, Loader2 } from 'lucide-react';
+import { Sparkles, ScanLine, Loader2, RotateCcw } from 'lucide-react';
 
 import { UploadResumeForm } from './components/UploadResumeForm';
 import { JobDescriptionInput } from './components/JobDescriptionInput';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { HistoryList } from './components/HistoryList';
 import { AnalysisResult } from './types';
+import { AnalysisProgressLoader } from './components/AnalysisProgressLoader';
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -15,6 +16,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Progress loader state
+  const [showProgressLoader, setShowProgressLoader] = useState(false);
+  const [apiActive, setApiActive] = useState(false);
+  const [tempResult, setTempResult] = useState<AnalysisResult | null>(null);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
   const handleAnalyze = async () => {
     if (!file) {
@@ -28,6 +35,9 @@ function App() {
 
     setError(null);
     setLoading(true);
+    setShowProgressLoader(true);
+    setApiActive(true);
+    setTempResult(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -39,19 +49,35 @@ function App() {
           'Content-Type': 'multipart/form-data'
         }
       });
-      setResult(response.data);
-      
-      // Scroll to results
-      setTimeout(() => {
-        document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
-      }, 500);
+      setTempResult(response.data);
+      setApiActive(false);
 
     } catch (err: any) {
       setError(err.response?.data || 'An error occurred during analysis. Make sure the backend is running.');
       console.error(err);
-    } finally {
+      setShowProgressLoader(false);
       setLoading(false);
     }
+  };
+
+  const handleProgressComplete = () => {
+    if (tempResult) {
+      setResult(tempResult);
+      setShowProgressLoader(false);
+      setLoading(false);
+      setHistoryRefreshTrigger(prev => prev + 1);
+      
+      // Scroll to results
+      setTimeout(() => {
+        document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setResult(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -132,7 +158,12 @@ function App() {
 
           <div className="flex flex-col space-y-8">
             <div className="glass-card rounded-3xl p-8 border border-white/5 h-full flex flex-col items-center justify-center text-center">
-               {!result ? (
+               {showProgressLoader ? (
+                 <AnalysisProgressLoader 
+                   apiActive={apiActive} 
+                   onComplete={handleProgressComplete} 
+                 />
+               ) : !result ? (
                  <div className="opacity-50">
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="w-32 h-32 mx-auto mb-6 opacity-20">
                       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -154,10 +185,30 @@ function App() {
         </div>
 
         <AnimatePresence>
-          {result && <ResultsDisplay result={result} />}
+          {result && (
+            <>
+              <ResultsDisplay result={result} />
+              <div className="flex justify-center mt-12 mb-16">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleReset}
+                  className="px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center bg-gradient-to-r from-primary to-secondary text-white hover:shadow-primary/50"
+                >
+                  <RotateCcw className="mr-3 w-5 h-5" />
+                  Analyze Another Resume
+                </motion.button>
+              </div>
+            </>
+          )}
         </AnimatePresence>
 
-        <HistoryList />
+        <HistoryList refreshTrigger={historyRefreshTrigger} />
+
+        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-xs space-y-1">
+          <p className="text-gray-300">© 2026 Chaithanya</p>
+          <p className="text-gray-400">ATS Resume Checker • Version 1.0</p>
+        </footer>
 
       </main>
     </div>

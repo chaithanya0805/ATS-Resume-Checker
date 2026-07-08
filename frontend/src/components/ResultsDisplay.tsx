@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AnalysisResult } from '../types';
-import { CheckCircle2, XCircle, Layout, Activity } from 'lucide-react';
+import { CheckCircle2, XCircle, Layout, Activity, Award, TrendingUp, AlertTriangle, Lightbulb, Sparkles, Code } from 'lucide-react';
 
 interface ResultsDisplayProps {
   result: AnalysisResult;
@@ -9,6 +9,33 @@ interface ResultsDisplayProps {
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
   const [displayScore, setDisplayScore] = useState(0);
+
+  const cleanText = (text: string): string => {
+    if (!text) return "";
+    return text
+      .replace(/\*{2,}/g, "") // Remove bold markdown symbols **
+      .replace(/#{1,6}\s?/g, "") // Remove header symbols like ###
+      .replace(/^\s*[-*+]\s+/mg, "") // Remove list bullets at start of lines
+      .replace(/^\s*\d+\.\s+/mg, "") // Remove list numbers at start of lines
+      .trim();
+  };
+
+  const getArrayField = (field: any, separator: string | RegExp = ','): string[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) {
+      return field.map(cleanText).filter(Boolean);
+    }
+    if (typeof field === 'string') {
+      return field.split(separator).map(s => s.trim()).map(cleanText).filter(Boolean);
+    }
+    return [];
+  };
+
+  const getSkillsFound = () => getArrayField(result.skillsFound, ',');
+  const getMissingSkills = () => getArrayField(result.missingSkills, ',');
+  const getStrengths = () => getArrayField(result.strengths, '\n');
+  const getWeaknesses = () => getArrayField(result.weaknesses, '\n');
+  const getSuggestions = () => getArrayField(result.resumeImprovementSuggestions, '\n');
 
   useEffect(() => {
     // Animated counter for the score
@@ -157,16 +184,167 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         </motion.div>
       </div>
 
-      {/* Section Analysis */}
-      <motion.div variants={itemVariants} className="glass-card rounded-3xl p-8 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
-        <h3 className="text-xl font-bold text-white flex items-center mb-4">
-          <Layout className="w-6 h-6 text-primary mr-3" />
-          Section Analysis
-        </h3>
-        <p className="text-gray-300 leading-relaxed text-lg">
-          {result.sectionAnalysis || "No section analysis available."}
-        </p>
+      {/* Redesigned Section Analysis */}
+      <motion.div variants={itemVariants} className="space-y-8">
+        
+        {/* Title of Section Analysis */}
+        <div className="flex items-center space-x-3 mb-2">
+          <Layout className="w-6 h-6 text-primary" />
+          <h3 className="text-2xl font-bold text-white tracking-tight">Section Analysis</h3>
+        </div>
+
+        {/* 1. Match Overview & Recommendation */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-card rounded-3xl p-6 border border-white/5 relative overflow-hidden md:col-span-1 flex flex-col justify-center items-center text-center bg-white/[0.01]">
+            <div className="p-3.5 bg-primary/10 rounded-full mb-4">
+              <TrendingUp className="w-6 h-6 text-primary" />
+            </div>
+            <h4 className="text-gray-400 font-medium text-xs uppercase tracking-wider mb-2">Match Percentage</h4>
+            <span className="text-5xl font-extrabold text-gradient">{result.matchPercentage || result.atsScore}%</span>
+          </div>
+
+          <div className="glass-card rounded-3xl p-6 border border-white/5 relative overflow-hidden md:col-span-2 text-left bg-white/[0.01]">
+            <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+            <h4 className="text-white font-semibold text-lg flex items-center mb-3">
+              <Award className="w-5 h-5 text-primary mr-2" />
+              Hiring Recommendation
+            </h4>
+            <p className="text-gray-300 text-sm md:text-base leading-relaxed">
+              {cleanText(result.hiringRecommendation) || "No recommendation provided."}
+            </p>
+          </div>
+        </div>
+
+        {/* 2. Skills Profile */}
+        <div className="glass-card rounded-3xl p-6 border border-white/5 text-left relative overflow-hidden bg-white/[0.01]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+          <h4 className="text-white font-semibold text-lg flex items-center mb-6">
+            <Code className="w-5 h-5 text-secondary mr-2" />
+            Skills Profile
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Skills Found */}
+            <div>
+              <h5 className="text-gray-300 font-medium text-sm mb-3 flex items-center">
+                <span className="w-2 h-2 rounded-full bg-success mr-2"></span>
+                Skills Found
+              </h5>
+              <div className="flex flex-wrap gap-2">
+                {getSkillsFound().length > 0 ? (
+                  getSkillsFound().map((skill, i) => (
+                    <span key={i} className="px-3 py-1 text-xs rounded-full bg-success/15 text-success border border-success/20">
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">No skills identified.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Missing Skills */}
+            <div>
+              <h5 className="text-gray-300 font-medium text-sm mb-3 flex items-center">
+                <span className="w-2 h-2 rounded-full bg-danger mr-2"></span>
+                Missing Skills
+              </h5>
+              <div className="flex flex-wrap gap-2">
+                {getMissingSkills().length > 0 ? (
+                  getMissingSkills().map((skill, i) => (
+                    <span key={i} className="px-3 py-1 text-xs rounded-full bg-danger/15 text-danger border border-danger/20">
+                      {skill}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">None! All matching skills found.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 & 4. Strengths and Areas for Improvement */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Strengths */}
+          <div className="glass-card rounded-3xl p-6 border border-white/5 text-left relative overflow-hidden bg-white/[0.01]">
+            <div className="absolute top-0 left-0 w-1 h-full bg-success"></div>
+            <h4 className="text-white font-semibold text-lg flex items-center mb-4">
+              <CheckCircle2 className="w-5 h-5 text-success mr-2" />
+              Key Strengths
+            </h4>
+            <div className="space-y-3">
+              {getStrengths().length > 0 ? (
+                getStrengths().map((strength, i) => (
+                  <div key={i} className="flex items-start space-x-3 p-3 bg-white/[0.01] border border-white/5 rounded-xl">
+                    <span className="text-success mt-0.5 font-bold">✔</span>
+                    <p className="text-gray-300 text-sm leading-relaxed">{strength}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm italic">No specific strengths listed.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Areas for Improvement */}
+          <div className="glass-card rounded-3xl p-6 border border-white/5 text-left relative overflow-hidden bg-white/[0.01]">
+            <div className="absolute top-0 left-0 w-1 h-full bg-danger"></div>
+            <h4 className="text-white font-semibold text-lg flex items-center mb-4">
+              <AlertTriangle className="w-5 h-5 text-danger mr-2" />
+              Areas for Improvement
+            </h4>
+            <div className="space-y-3">
+              {getWeaknesses().length > 0 ? (
+                getWeaknesses().map((weakness, i) => (
+                  <div key={i} className="flex items-start space-x-3 p-3 bg-white/[0.01] border border-white/5 rounded-xl">
+                    <span className="text-danger mt-0.5 font-bold">⚠</span>
+                    <p className="text-gray-300 text-sm leading-relaxed">{weakness}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm italic">No key weaknesses listed.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Resume Improvement Suggestions */}
+        <div className="glass-card rounded-3xl p-6 border border-white/5 text-left relative overflow-hidden bg-white/[0.01]">
+          <div className="absolute top-0 left-0 w-1 h-full bg-secondary"></div>
+          <h4 className="text-white font-semibold text-lg flex items-center mb-4">
+            <Lightbulb className="w-5 h-5 text-secondary mr-2" />
+            Resume Improvement Suggestions
+          </h4>
+          <div className="space-y-3.5 pt-2">
+            {getSuggestions().length > 0 ? (
+              getSuggestions().map((suggestion, i) => (
+                <div key={i} className="flex items-start space-x-4">
+                  <div className="w-6 h-6 rounded-full bg-secondary/15 text-secondary flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-secondary/20 shadow-md">
+                    {i + 1}
+                  </div>
+                  <p className="text-gray-300 text-sm md:text-base leading-relaxed">{suggestion}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm italic">No suggestions provided.</p>
+            )}
+          </div>
+        </div>
+
+        {/* 6. Optimized Professional Summary */}
+        {result.optimizedProfessionalSummary && (
+          <div className="glass-card rounded-3xl p-6 border border-white/5 text-left relative overflow-hidden bg-gradient-to-br from-primary/5 to-secondary/5">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+            <h4 className="text-white font-semibold text-lg flex items-center mb-4">
+              <Sparkles className="w-5 h-5 text-primary mr-2" />
+              Optimized Professional Summary
+            </h4>
+            <p className="text-gray-200 text-sm md:text-base leading-relaxed italic font-medium p-4 bg-black/20 rounded-2xl border border-white/5">
+              "{cleanText(result.optimizedProfessionalSummary)}"
+            </p>
+          </div>
+        )}
+
       </motion.div>
 
     </motion.div>

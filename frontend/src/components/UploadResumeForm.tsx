@@ -18,7 +18,9 @@ export const UploadResumeForm: React.FC<UploadResumeFormProps> = ({ file, setFil
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc']
     },
     maxFiles: 1
   });
@@ -32,7 +34,7 @@ export const UploadResumeForm: React.FC<UploadResumeFormProps> = ({ file, setFil
     >
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2">1. Upload Resume</h2>
-        <p className="text-gray-400 text-sm">Upload your resume in PDF format.</p>
+        <p className="text-gray-400 text-sm">Upload your resume in PDF or DOCX/DOC format.</p>
       </div>
 
       {!file ? (

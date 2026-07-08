@@ -36,4 +36,13 @@ public class ResumeController {
     public ResponseEntity<List<AnalysisResult>> getHistory() {
         return ResponseEntity.ok(repository.findAllByOrderByCreatedAtDesc());
     }
+
+    @DeleteMapping("/history/{id}")
+    public ResponseEntity<Void> deleteHistory(@PathVariable Long id) {
+        if (!repository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        repository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
 }

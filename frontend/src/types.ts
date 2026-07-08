@@ -3,6 +3,15 @@ export interface AnalysisResult {
   matchedKeywords: string[];
   missingKeywords: string[];
   sectionAnalysis: string;
+  matchPercentage: number;
+  skillsFound: string[];
+  missingSkills: string[];
+  strengths: string[];
+  weaknesses: string[];
+  grammarSuggestions: string[];
+  resumeImprovementSuggestions: string[];
+  optimizedProfessionalSummary: string;
+  hiringRecommendation: string;
 }
 
 export interface HistoryItem {
@@ -13,4 +22,13 @@ export interface HistoryItem {
   missingKeywords: string;
   sectionAnalysis: string;
   createdAt: string;
+  matchPercentage: number;
+  skillsFound: string;
+  missingSkills: string;
+  strengths: string;
+  weaknesses: string;
+  grammarSuggestions: string;
+  resumeImprovementSuggestions: string;
+  optimizedProfessionalSummary: string;
+  hiringRecommendation: string;
 }
