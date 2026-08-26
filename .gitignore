@@ -16,3 +16,11 @@ Thumbs.db
 
 # Environment
 .env
+.env.local
+
+# Node / Frontend
+node_modules/
+dist/
+
+# Local Helpers
+powershell.cmd

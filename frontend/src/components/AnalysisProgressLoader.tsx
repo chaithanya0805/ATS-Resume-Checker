@@ -14,7 +14,7 @@ export const AnalysisProgressLoader: React.FC<AnalysisProgressLoaderProps> = ({
   useEffect(() => {
     if (progress >= 100) return;
 
-    let timer: NodeJS.Timeout;
+    let timer: any;
 
     if (apiActive) {
       if (progress < 93) {
