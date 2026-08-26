@@ -54,7 +54,23 @@ function App() {
       setApiActive(false);
 
     } catch (err: any) {
-      setError(err.response?.data || 'An error occurred during analysis. Make sure the backend is running.');
+      let errorMessage = 'An error occurred during analysis. Make sure the backend is running.';
+      if (err.response) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data && typeof err.response.data.message === 'string') {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data && typeof err.response.data.error === 'string') {
+          errorMessage = err.response.data.error;
+        } else {
+          errorMessage = `Backend Error (Status ${err.response.status}): ${JSON.stringify(err.response.data)}`;
+        }
+      } else if (err.request) {
+        errorMessage = 'No response received from the backend. Please check if the server is awake and CORS is configured.';
+      } else {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
       console.error(err);
       setShowProgressLoader(false);
       setLoading(false);
