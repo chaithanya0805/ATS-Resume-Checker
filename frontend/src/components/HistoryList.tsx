@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_BASE_URL } from '../config';
 
 interface HistoryItem {
   id: number;
@@ -23,7 +24,7 @@ export const HistoryList = ({ refreshTrigger = 0 }: { refreshTrigger?: number })
     const fetchHistory = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8082/api/v1/resume/history"
+          `${API_BASE_URL}/api/v1/resume/history`
         );
         setHistory(response.data);
       } catch (error) {
@@ -46,7 +47,7 @@ export const HistoryList = ({ refreshTrigger = 0 }: { refreshTrigger?: number })
   const handleDeleteConfirm = async () => {
     if (itemToDelete !== null) {
       try {
-        await axios.delete(`http://localhost:8082/api/v1/resume/history/${itemToDelete}`);
+        await axios.delete(`${API_BASE_URL}/api/v1/resume/history/${itemToDelete}`);
         setHistory((prev) => prev.filter((item) => item.id !== itemToDelete));
         showToastMessage("Analysis deleted successfully.", "success");
       } catch (error) {

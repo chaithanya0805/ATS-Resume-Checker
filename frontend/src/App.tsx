@@ -9,6 +9,7 @@ import { ResultsDisplay } from './components/ResultsDisplay';
 import { HistoryList } from './components/HistoryList';
 import { AnalysisResult } from './types';
 import { AnalysisProgressLoader } from './components/AnalysisProgressLoader';
+import { API_BASE_URL } from './config';
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -44,7 +45,7 @@ function App() {
     formData.append('jobDescription', jobDescription);
 
     try {
-      const response = await axios.post<AnalysisResult>('http://localhost:8082/api/v1/resume/check', formData, {
+      const response = await axios.post<AnalysisResult>(`${API_BASE_URL}/api/v1/resume/check`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
