@@ -16,23 +16,23 @@ public class GeminiApiKeyManager {
 
     public GeminiApiKeyManager(Environment env) {
         List<String> loadedKeys = new ArrayList<>();
-        int index = 1;
 
-        // Loop to dynamically find GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.
-        while (true) {
-            String key = env.getProperty("GEMINI_API_KEY_" + index);
-            if (key != null && !key.trim().isEmpty() && !key.contains("YOUR_API_KEY")) {
+        // Loop to find GEMINI_API_KEY_1 through GEMINI_API_KEY_20 (ignores gaps)
+        for (int i = 1; i <= 20; i++) {
+            String key = env.getProperty("GEMINI_API_KEY_" + i);
+            boolean isConfigured = key != null && !key.trim().isEmpty() && !key.contains("YOUR_API_KEY");
+            log.info("Gemini API Key {}: {}", i, isConfigured ? "configured" : "not configured");
+            if (isConfigured) {
                 loadedKeys.add(key.trim());
-            } else {
-                break;
             }
-            index++;
         }
 
         // Fallback: check ATS_GEMINI_API_KEY for legacy/existing deployments
         if (loadedKeys.isEmpty()) {
             String atsKey = env.getProperty("ATS_GEMINI_API_KEY");
-            if (atsKey != null && !atsKey.trim().isEmpty() && !atsKey.contains("YOUR_API_KEY")) {
+            boolean isConfigured = atsKey != null && !atsKey.trim().isEmpty() && !atsKey.contains("YOUR_API_KEY");
+            log.info("Legacy ATS_GEMINI_API_KEY: {}", isConfigured ? "configured" : "not configured");
+            if (isConfigured) {
                 loadedKeys.add(atsKey.trim());
             }
         }
@@ -40,7 +40,9 @@ public class GeminiApiKeyManager {
         // Fallback: check default gemini.api.key value defined in application.properties
         if (loadedKeys.isEmpty()) {
             String defaultKey = env.getProperty("gemini.api.key");
-            if (defaultKey != null && !defaultKey.trim().isEmpty() && !defaultKey.contains("YOUR_API_KEY")) {
+            boolean isConfigured = defaultKey != null && !defaultKey.trim().isEmpty() && !defaultKey.contains("YOUR_API_KEY");
+            log.info("Default gemini.api.key: {}", isConfigured ? "configured" : "not configured");
+            if (isConfigured) {
                 loadedKeys.add(defaultKey.trim());
             }
         }
