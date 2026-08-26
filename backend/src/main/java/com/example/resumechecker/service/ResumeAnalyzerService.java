@@ -33,13 +33,11 @@ public class ResumeAnalyzerService {
 private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
     private final AnalysisResultRepository repository;
     private final ObjectMapper objectMapper;
+    private final GeminiApiKeyManager apiKeyManager;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(30))
             .build();
-
-    @Value("${gemini.api.key}")
-    private String apiKey;
 
     public ResumeCheckResponse analyzeResume(MultipartFile file, String jobDescription) {
         try {
@@ -54,9 +52,9 @@ private static final String GEMINI_API_URL = "https://generativelanguage.googlea
                 throw new RuntimeException("Could not extract any text from the uploaded file.");
             }
 
-            // 2. Validate API key
-            if (apiKey == null || apiKey.trim().isEmpty() || apiKey.contains("YOUR_API_KEY")) {
-                throw new RuntimeException("Gemini API key is not configured. Please configure GEMINI_API_KEY as an environment variable or in application.properties.");
+            // 2. Validate API key configuration
+            if (apiKeyManager.getKeyCount() == 0) {
+                throw new RuntimeException("Gemini API key is not configured. Please configure GEMINI_API_KEY_1 or ATS_GEMINI_API_KEY as an environment variable.");
             }
 
          // 3. Construct prompt
@@ -138,30 +136,55 @@ JSON Format:
 
             String jsonPayload = objectMapper.writeValueAsString(payload);
 
-            // 5. Send request to Gemini API
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(GEMINI_API_URL + "?key=" + apiKey))
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(120))
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
-                    .build();
+            // 5. Send request to Gemini API with request-level fallback/rotation
+            List<String> keys = apiKeyManager.getAvailableKeys();
+            HttpResponse<String> response = null;
+            boolean success = false;
+            int keyIndex = 0;
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("Gemini Status: " + response.statusCode());
-            System.out.println("Gemini Response: " + response.body());
+            while (keyIndex < keys.size()) {
+                String currentKey = keys.get(keyIndex);
+                log.info("Attempting Gemini API request with Key {} of {}.", (keyIndex + 1), keys.size());
 
-            if (response.statusCode() != 200) {
-    log.error("Gemini API request failed.");
-    log.error("Status: {}", response.statusCode());
-    log.error("Body: {}", response.body());
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(GEMINI_API_URL + "?key=" + currentKey))
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofSeconds(120))
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                        .build();
 
-    throw new RuntimeException(
-        "Gemini API Error\nStatus: "
-        + response.statusCode()
-        + "\nResponse: "
-        + response.body()
-    );
-}
+                try {
+                    response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    System.out.println("Gemini Status: " + response.statusCode());
+
+                    if (response.statusCode() == 200) {
+                        success = true;
+                        break; // Success!
+                    }
+
+                    // Check if error is temporary (quota, rate-limit, service unavailable)
+                    if (isQuotaOrRateLimitError(response.statusCode(), response.body())) {
+                        log.warn("Gemini API Key {} failed with status {} (Quota/Rate Limit/Temporary). Switching to next key.", 
+                                 (keyIndex + 1), response.statusCode());
+                        keyIndex++;
+                    } else {
+                        // Client error or invalid configuration - do not retry
+                        log.error("Gemini API request failed with client/server error.");
+                        log.error("Status: {}", response.statusCode());
+                        log.error("Body: {}", response.body());
+                        throw new RuntimeException("Gemini API Error\nStatus: " + response.statusCode() + "\nResponse: " + response.body());
+                    }
+                } catch (java.io.IOException | InterruptedException e) {
+                    log.warn("Network error occurred using Gemini API Key {}: {}. Switching to next key.", 
+                             (keyIndex + 1), e.getMessage());
+                    keyIndex++;
+                }
+            }
+
+            if (!success) {
+                log.error("All configured Gemini API keys have failed or exhausted their quota.");
+                throw new RuntimeException("AI service is currently busy. Please try again later.");
+            }
 
             // 6. Parse Gemini response
             JsonNode rootNode = objectMapper.readTree(response.body());
@@ -274,6 +297,20 @@ JSON Format:
         sb.append(geminiResult.getOptimizedProfessionalSummary());
 
         return sb.toString();
+    }
+
+    private boolean isQuotaOrRateLimitError(int statusCode, String responseBody) {
+        if (statusCode == 429 || statusCode == 503) {
+            return true;
+        }
+        if (responseBody != null) {
+            String lowerBody = responseBody.toLowerCase();
+            return lowerBody.contains("resource_exhausted") 
+                || lowerBody.contains("unavailable")
+                || lowerBody.contains("quota exceeded")
+                || lowerBody.contains("rate limit exceeded");
+        }
+        return false;
     }
 
     @Data
