@@ -139,18 +139,24 @@ function App() {
       const startTime = Date.now();
       addDiagLog("[MOBILE-DIAG-05] Before health check.");
 
-      // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
+      // Ping health endpoint asynchronously (non-blocking) so we do not break the synchronous user gesture tick.
+      // Awaiting here on mobile browsers causes Chrome to invalidate/expire the file access permissions.
       try {
-        addDiagLog(`[MOBILE-DIAG-05A] Health request started. URL: ${API_BASE_URL}/api/v1/resume/health`);
-        addDiagLog(`[MOBILE-DIAG-BEFORE-HEALTH] Invoking health check GET...`);
-        const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
-        addDiagLog(`[MOBILE-DIAG-AFTER-HEALTH] Health check GET resolved.`);
-        addDiagLog(`[MOBILE-DIAG-05B] Health response received. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
+        addDiagLog(`[MOBILE-DIAG-05A] Health request started (background/non-blocking). URL: ${API_BASE_URL}/api/v1/resume/health`);
+        addDiagLog(`[MOBILE-DIAG-BEFORE-HEALTH] Triggering background health check GET...`);
+        axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 })
+          .then((healthRes) => {
+            addDiagLog(`[MOBILE-DIAG-AFTER-HEALTH] Health check GET resolved. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
+            addDiagLog(`[MOBILE-DIAG-05B] Health response received in background.`);
+          })
+          .catch((healthErr) => {
+            addDiagLog(`[MOBILE-DIAG-05C] Background Health request failed. Error: ${healthErr.message}`);
+          });
       } catch (healthErr: any) {
-        addDiagLog(`[MOBILE-DIAG-05C] Health request failed. Error: ${healthErr.message}`);
+        addDiagLog(`[MOBILE-DIAG-05-OUTER-ERR] Failed to setup health check: ${healthErr.message}`);
       }
 
-      addDiagLog("[MOBILE-DIAG-06] Health check processing completed. Execution continuing...");
+      addDiagLog("[MOBILE-DIAG-06] Health check setup completed. Execution continuing synchronously...");
 
       addDiagLog("[MOBILE-DIAG-07] Before FormData creation.");
       addDiagLog("[MOBILE-DIAG-BEFORE-FORM-DATA-CONSTRUCTOR] Instantiating FormData...");

@@ -58,11 +58,13 @@ public class ResumeController {
     public ResponseEntity<ResumeCheckResponse> checkResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam("jobDescription") String jobDescription) {
-        log.info("[API POST /check] VERY FIRST LINE of checkResume reached.");
         
         String filename = file != null ? file.getOriginalFilename() : "null";
         long fileSize = file != null ? file.getSize() : 0;
-        log.info("[API REQUEST] Incoming ATS check request received. File: {}, Size: {} bytes", filename, fileSize);
+        int jdLength = jobDescription != null ? jobDescription.length() : 0;
+        
+        log.info("[API POST /check] VERY FIRST POINT REACHED. URI: /api/v1/resume/check | Content-Type: multipart/form-data | File: {}, Size: {} bytes | JD Length: {}", 
+                filename, fileSize, jdLength);
 
         if (file == null || file.isEmpty() || jobDescription == null || jobDescription.trim().isEmpty()) {
             log.warn("[API REQUEST] Validation failed: file is empty or jobDescription is blank");
