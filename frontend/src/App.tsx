@@ -47,8 +47,22 @@ function App() {
     const startTime = Date.now();
     console.log(`[API REQUEST] Starting ATS check process at ${new Date(startTime).toISOString()}`);
     console.log(`[API REQUEST] Target URL: ${API_BASE_URL}/api/v1/resume/check`);
-    console.log(`[API REQUEST] File Name: ${file.name}`);
-    console.log(`[API REQUEST] File Size: ${file.size} bytes`);
+    
+    // FRONTEND diagnostics (Phase 2):
+    console.log(`[DIAGNOSTIC] file instanceof File:`, file instanceof File);
+    console.log(`[DIAGNOSTIC] file.name:`, file ? file.name : "null");
+    console.log(`[DIAGNOSTIC] file.type:`, file ? file.type : "null");
+    console.log(`[DIAGNOSTIC] file.size:`, file ? file.size : "null");
+    console.log(`[DIAGNOSTIC] Before FormData creation`);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('jobDescription', jobDescription);
+
+    console.log(`[DIAGNOSTIC] After FormData creation`);
+    for (let key of (formData as any).keys()) {
+      console.log(`[DIAGNOSTIC] FormData key:`, key);
+    }
 
     // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
     try {
@@ -59,15 +73,12 @@ function App() {
       console.warn(`[API HEALTH CHECK FAILED] Failed to reach health endpoint:`, healthErr.message);
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('jobDescription', jobDescription);
-
     try {
       // NOTE: We do not set the 'Content-Type' header manually. Letting Axios set it automatically
       // allows the browser to properly generate the boundary parameter, which fixes failures on mobile.
       const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
-      console.log(`[API REQUEST] Sending POST request to complete endpoint: ${targetEndpoint}`);
+      console.log(`[DIAGNOSTIC] Immediately before axios POST to: ${targetEndpoint}`);
+      console.log(`[DIAGNOSTIC] POST start timestamp: ${new Date().toISOString()}`);
       
       const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
         timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
@@ -81,7 +92,18 @@ function App() {
 
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      console.error(`[API ERROR] Request failed after ${duration}ms. Details:`, err);
+      console.error(`[API ERROR] Request failed after ${duration}ms.`);
+      
+      // Detailed Axios error diagnostics (Phase 2):
+      console.error(`[DIAGNOSTIC ERROR] error.name:`, err.name);
+      console.error(`[DIAGNOSTIC ERROR] error.message:`, err.message);
+      console.error(`[DIAGNOSTIC ERROR] error.code:`, err.code);
+      console.error(`[DIAGNOSTIC ERROR] error.response?.status:`, err.response?.status);
+      console.error(`[DIAGNOSTIC ERROR] error.response?.data:`, err.response?.data);
+      console.error(`[DIAGNOSTIC ERROR] error.request exists:`, !!err.request);
+      console.error(`[DIAGNOSTIC ERROR] error.cause:`, err.cause);
+      console.error(`[DIAGNOSTIC ERROR] navigator.onLine:`, navigator.onLine);
+      console.error(`[DIAGNOSTIC ERROR] request duration: ${duration}ms`);
 
       let errorMessage = 'An error occurred during analysis.';
       if (err.response) {

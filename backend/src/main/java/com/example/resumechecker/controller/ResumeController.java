@@ -28,6 +28,31 @@ public class ResumeController {
         return ResponseEntity.ok(Map.of("status", "UP"));
     }
 
+    @PostMapping("/test-json")
+    public ResponseEntity<Map<String, String>> testJson(@RequestBody Map<String, Object> payload) {
+        log.info("[TEST-JSON] Received JSON POST payload: {}", payload);
+        return ResponseEntity.ok(Map.of("status", "OK", "message", "JSON POST successful", "payload", payload.toString()));
+    }
+
+    @PostMapping("/test-multipart-text")
+    public ResponseEntity<Map<String, String>> testMultipartText(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("description") String description) {
+        String filename = file != null ? file.getOriginalFilename() : "null";
+        long size = file != null ? file.getSize() : 0;
+        log.info("[TEST-MULTIPART-TEXT] Received file: {}, size: {} bytes, description: {}", filename, size, description);
+        return ResponseEntity.ok(Map.of("status", "OK", "filename", filename, "size", String.valueOf(size), "description", description));
+    }
+
+    @PostMapping("/test-multipart-file")
+    public ResponseEntity<Map<String, String>> testMultipartFile(
+            @RequestParam("file") MultipartFile file) {
+        String filename = file != null ? file.getOriginalFilename() : "null";
+        long size = file != null ? file.getSize() : 0;
+        log.info("[TEST-MULTIPART-FILE] Received PDF file: {}, size: {} bytes", filename, size);
+        return ResponseEntity.ok(Map.of("status", "OK", "filename", filename, "size", String.valueOf(size)));
+    }
+
     @PostMapping("/check")
     public ResponseEntity<ResumeCheckResponse> checkResume(
             @RequestParam("file") MultipartFile file,
