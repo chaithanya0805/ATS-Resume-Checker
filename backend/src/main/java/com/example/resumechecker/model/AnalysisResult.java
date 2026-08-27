@@ -24,40 +24,6 @@ public class AnalysisResult {
 
     private int atsScore;
 
-    @Column(columnDefinition = "TEXT")
-    private String matchedKeywords;
-
-    @Column(columnDefinition = "TEXT")
-    private String missingKeywords;
-    
-    @Column(columnDefinition = "TEXT")
-    private String sectionAnalysis;
-
-    private int matchPercentage;
-
-    @Column(columnDefinition = "TEXT")
-    private String skillsFound;
-
-    @Column(columnDefinition = "TEXT")
-    private String missingSkills;
-
-    @Column(columnDefinition = "TEXT")
-    private String strengths;
-
-    @Column(columnDefinition = "TEXT")
-    private String weaknesses;
-
-    @Column(columnDefinition = "TEXT")
-    private String grammarSuggestions;
-
-    @Column(columnDefinition = "TEXT")
-    private String resumeImprovementSuggestions;
-
-    @Column(columnDefinition = "TEXT")
-    private String optimizedProfessionalSummary;
-
-    private String hiringRecommendation;
-
     private LocalDateTime createdAt;
     
     @PrePersist

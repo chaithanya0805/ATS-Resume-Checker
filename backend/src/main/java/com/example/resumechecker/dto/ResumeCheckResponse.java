@@ -7,8 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-import jakarta.persistence.Column;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,6 +24,5 @@ public class ResumeCheckResponse {
     private List<String> grammarSuggestions;
     private List<String> resumeImprovementSuggestions;
     private String optimizedProfessionalSummary;
-   @Column(columnDefinition = "TEXT")
-private String hiringRecommendation;
+    private String hiringRecommendation;
 }

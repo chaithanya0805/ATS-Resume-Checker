@@ -209,20 +209,12 @@ JSON Format:
             AnalysisResult result = AnalysisResult.builder()
                     .fileName(file.getOriginalFilename())
                     .atsScore(geminiResult.getMatchPercentage())
-                    .matchedKeywords(String.join(", ", geminiResult.getMatchedKeywords()))
-                    .missingKeywords(String.join(", ", geminiResult.getMissingKeywords()))
-                    .sectionAnalysis(sectionAnalysis)
-                    .matchPercentage(geminiResult.getMatchPercentage())
-                    .skillsFound(String.join(", ", geminiResult.getSkillsFound()))
-                    .missingSkills(String.join(", ", geminiResult.getMissingSkills()))
-                    .strengths(String.join("\n", geminiResult.getStrengths()))
-                    .weaknesses(String.join("\n", geminiResult.getWeaknesses()))
-                    .grammarSuggestions(String.join("\n", geminiResult.getGrammarSuggestions()))
-                    .resumeImprovementSuggestions(String.join("\n", geminiResult.getResumeImprovementSuggestions()))
-                    .optimizedProfessionalSummary(geminiResult.getOptimizedProfessionalSummary())
-                    .hiringRecommendation(geminiResult.getHiringRecommendation())
                     .build();
-            repository.save(result);
+            try {
+                repository.save(result);
+            } catch (Exception e) {
+                log.error("Failed to save analysis result to database", e);
+            }
 
             // 9. Map and return response DTO
            return ResumeCheckResponse.builder()
