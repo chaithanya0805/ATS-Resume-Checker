@@ -79,15 +79,35 @@ function App() {
     addDiagLog(`[TEST-FILE] TEST STARTED | URL: ${url} | Method: POST | Type: Multipart (Selected Resume File) | Start: ${new Date(startTime).toISOString()}`);
     addDiagLog(`[TEST-FILE] File properties: Name=${file.name}, Size=${file.size} bytes, Type=${file.type}`);
     try {
+      addDiagLog("[TEST-FILE] [BEFORE] FormData constructor");
       const fData = new FormData();
+      addDiagLog("[TEST-FILE] [AFTER] FormData constructor");
+      
+      addDiagLog("[TEST-FILE] [BEFORE] file append");
       fData.append("file", file);
+      addDiagLog("[TEST-FILE] [AFTER] file append");
 
-      const res = await axios.post(url, fData, { timeout: 60000 });
+      addDiagLog("[TEST-FILE] [BEFORE] axios request creation");
+      const targetUrl = url;
+      addDiagLog("[TEST-FILE] [AFTER] axios request creation");
+
+      addDiagLog(`[TEST-FILE] [BEFORE] axios request invocation to: ${targetUrl}`);
+      const res = await axios.post(targetUrl, fData, { 
+        timeout: 60000 
+      });
+      addDiagLog("[TEST-FILE] [AFTER] axios request invocation resolved");
+      
       const duration = Date.now() - startTime;
       addDiagLog(`[TEST-FILE] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      addDiagLog(`[TEST-FILE] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+      addDiagLog(`[TEST-FILE] FAILURE | Duration: ${duration}ms`);
+      addDiagLog(`[TEST-FILE] error.name: ${err.name}`);
+      addDiagLog(`[TEST-FILE] error.message: ${err.message}`);
+      addDiagLog(`[TEST-FILE] error.code: ${err.code}`);
+      addDiagLog(`[TEST-FILE] error.response: ${err.response ? JSON.stringify(err.response.data) : 'undefined'}`);
+      addDiagLog(`[TEST-FILE] error.request exists: ${!!err.request}`);
+      addDiagLog(`[TEST-FILE] navigator.onLine: ${navigator.onLine}`);
     }
   };
 

@@ -44,16 +44,17 @@ public class ResumeController {
         return ResponseEntity.ok(Map.of("status", "OK", "filename", filename, "size", String.valueOf(size), "description", description));
     }
 
-    @PostMapping("/test-multipart-file")
+    @PostMapping(value = "/test-multipart-file", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> testMultipartFile(
             @RequestParam("file") MultipartFile file) {
+        log.info("[TEST-MULTIPART-FILE] VERY FIRST LINE of testMultipartFile mapping reached.");
         String filename = file != null ? file.getOriginalFilename() : "null";
         long size = file != null ? file.getSize() : 0;
         log.info("[TEST-MULTIPART-FILE] Received PDF file: {}, size: {} bytes", filename, size);
         return ResponseEntity.ok(Map.of("status", "OK", "filename", filename, "size", String.valueOf(size)));
     }
 
-    @PostMapping("/check")
+    @PostMapping(value = "/check", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResumeCheckResponse> checkResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam("jobDescription") String jobDescription) {
