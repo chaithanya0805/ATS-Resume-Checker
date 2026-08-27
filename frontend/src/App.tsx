@@ -94,7 +94,11 @@ function App() {
   const handleReset = () => {
     setFile(null);
     setResult(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setError(null);
+    document.getElementById('hero-section')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
   };
 
   return (
@@ -104,7 +108,7 @@ function App() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/20 blur-[120px] pointer-events-none"></div>
 
       {/* Sticky Header */}
-      <header className="sticky top-0 z-50 glass-card border-b border-white/5 py-4 px-6 md:px-12 flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-card border-b border-white/5 py-3 px-6 md:px-12 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-primary/20 rounded-lg animate-pulse-slow">
             <ScanLine className="text-primary w-6 h-6" />
@@ -121,7 +125,7 @@ function App() {
 
       <main className="container mx-auto px-4 py-12 md:py-20 max-w-5xl relative z-10">
         
-        <div className="text-center mb-16">
+        <div id="hero-section" className="text-center mb-16 scroll-mt-24">
           <motion.h2 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
