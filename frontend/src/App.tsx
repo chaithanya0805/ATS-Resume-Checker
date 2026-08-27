@@ -24,7 +24,7 @@ function App() {
   const [tempResult, setTempResult] = useState<AnalysisResult | null>(null);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const [diagLogs, setDiagLogs] = useState<string[]>([]);
-  const [showDiagPanel, setShowDiagPanel] = useState(false);
+  const [showDiagPanel, setShowDiagPanel] = useState(true);
 
   const addDiagLog = (message: string) => {
     const timeStr = new Date().toLocaleTimeString();
@@ -92,128 +92,150 @@ function App() {
   };
 
   const handleAnalyze = async () => {
-    addDiagLog("[MOBILE-DIAG-01] Button clicked: handleAnalyze invoked.");
-    
-    if (!file) {
-      setError('Please upload a resume (PDF).');
-      addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No file selected.");
-      return;
-    }
-    if (!jobDescription.trim()) {
-      setError('Please provide a job description.');
-      addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No job description.");
-      return;
-    }
-
-    addDiagLog("[MOBILE-DIAG-02] Validation passed.");
-    addDiagLog(`[MOBILE-DIAG-03] File exists. Name: ${file.name}`);
-    addDiagLog(`[MOBILE-DIAG-04] File instanceof File: ${file instanceof File}`);
-
-    setError(null);
-    setLoading(true);
-    setShowProgressLoader(true);
-    setApiActive(true);
-    setTempResult(null);
-
-    const startTime = Date.now();
-    addDiagLog("[MOBILE-DIAG-05] Before health check.");
-
-    // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
     try {
-      addDiagLog(`[MOBILE-DIAG-05A] Health request started. URL: ${API_BASE_URL}/api/v1/resume/health`);
-      const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
-      addDiagLog(`[MOBILE-DIAG-05B] Health response received. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
-    } catch (healthErr: any) {
-      addDiagLog(`[MOBILE-DIAG-05C] Health request failed. Error: ${healthErr.message}`);
-    }
-
-    addDiagLog("[MOBILE-DIAG-06] Health check processing completed. Execution continuing...");
-
-    addDiagLog("[MOBILE-DIAG-07] Before FormData creation.");
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('jobDescription', jobDescription);
-
-    addDiagLog("[MOBILE-DIAG-08] FormData created.");
-    try {
-      for (let key of (formData as any).keys()) {
-        addDiagLog(`[MOBILE-DIAG-08-KEY] FormData entry key: ${key}`);
+      addDiagLog("[MOBILE-DIAG-01] Button clicked: handleAnalyze invoked.");
+      
+      if (!file) {
+        setError('Please upload a resume (PDF).');
+        addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No file selected.");
+        return;
       }
-    } catch (fdErr: any) {
-      addDiagLog(`[MOBILE-DIAG-08-ERR] Failed to iterate keys: ${fdErr.message}`);
-    }
-
-    const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
-    addDiagLog(`[MOBILE-DIAG-09] Immediately before axios.post(). Params: ` +
-      `URL=${targetEndpoint}, ` +
-      `Method=POST, ` +
-      `FileName=${file.name}, ` +
-      `FileSize=${file.size} bytes, ` +
-      `FileType=${file.type}, ` +
-      `navigator.onLine=${navigator.onLine}, ` +
-      `AbortSignalAttached=false, ` +
-      `Timeout=120000ms`);
-
-    try {
-      addDiagLog(`[MOBILE-DIAG-10] Invoking axios.post() to target: ${targetEndpoint}`);
-      
-      const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
-        timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
-      });
-      
-      const duration = Date.now() - startTime;
-      addDiagLog(`[MOBILE-DIAG-11] POST success! Status: ${response.status}, Duration: ${duration}ms`);
-      
-      setTempResult(response.data);
-      setApiActive(false);
-
-    } catch (err: any) {
-      const duration = Date.now() - startTime;
-      addDiagLog(`[MOBILE-DIAG-12] POST error! Duration: ${duration}ms.`);
-      
-      // Detailed Axios error diagnostics (Phase 2):
-      console.error(`[DIAGNOSTIC ERROR] Full Axios error:`, err);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.name: ${err.name}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.message: ${err.message}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.code: ${err.code}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.response?.status: ${err.response?.status}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.response?.data: ${JSON.stringify(err.response?.data)}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.request exists: ${!!err.request}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] error.cause: ${err.cause ? err.cause.message || err.cause : 'none'}`);
-      addDiagLog(`[DIAGNOSTIC ERROR] navigator.onLine: ${navigator.onLine}`);
-
-      let errorMessage = 'An error occurred during analysis.';
-      if (err.response) {
-        const status = err.response.status;
-        if (status === 400) {
-          errorMessage = `Bad Request (400): ${typeof err.response.data === 'string' ? err.response.data : err.response.data.message || 'Please check your inputs.'}`;
-        } else if (status === 413) {
-          errorMessage = 'File too large (413). Please upload a smaller resume (max 10MB).';
-        } else if (status === 500) {
-          errorMessage = 'Internal Server Error (500). The AI service encountered an issue.';
-        } else if (status === 503 || status === 504) {
-          errorMessage = 'Server is currently busy or timed out (503/504). Please try again in a moment.';
-        } else {
-          errorMessage = `Server Error (${status}): ${err.response.data.message || err.message}`;
-        }
-      } else if (err.request) {
-        const isOffline = !window.navigator.onLine;
-        if (isOffline) {
-          errorMessage = 'Network connection lost. Please check your internet connectivity on your mobile device.';
-        } else if (duration >= 120000) {
-          errorMessage = `Request timed out after ${(duration / 1000).toFixed(1)} seconds. The Render server took too long to respond (likely due to cold start wakeup). Please try again.`;
-        } else {
-          errorMessage = `No response received from the backend at ${API_BASE_URL}. This can happen due to:\n` +
-            `1. Deployed Render server cold start (waking up from sleep mode, which can take up to 60-90 seconds).\n` +
-            `2. CORS policy restrictions preventing requests from this domain.\n` +
-            `3. Secure connection issues (HTTPS/SSL validation on mobile).\n\n` +
-            `Raw error details: ${err.message || 'Unknown network error'}`;
-        }
-      } else {
-        errorMessage = `Request Error: ${err.message}`;
+      if (!jobDescription.trim()) {
+        setError('Please provide a job description.');
+        addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No job description.");
+        return;
       }
 
-      setError(errorMessage);
+      addDiagLog("[MOBILE-DIAG-02] Validation passed.");
+      addDiagLog(`[MOBILE-DIAG-03] File exists. Name: ${file.name}`);
+      addDiagLog(`[MOBILE-DIAG-04] File instanceof File: ${file instanceof File}`);
+
+      setError(null);
+      setLoading(true);
+      setShowProgressLoader(true);
+      setApiActive(true);
+      setTempResult(null);
+
+      const startTime = Date.now();
+      addDiagLog("[MOBILE-DIAG-05] Before health check.");
+
+      // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
+      try {
+        addDiagLog(`[MOBILE-DIAG-05A] Health request started. URL: ${API_BASE_URL}/api/v1/resume/health`);
+        addDiagLog(`[MOBILE-DIAG-BEFORE-HEALTH] Invoking health check GET...`);
+        const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
+        addDiagLog(`[MOBILE-DIAG-AFTER-HEALTH] Health check GET resolved.`);
+        addDiagLog(`[MOBILE-DIAG-05B] Health response received. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
+      } catch (healthErr: any) {
+        addDiagLog(`[MOBILE-DIAG-05C] Health request failed. Error: ${healthErr.message}`);
+      }
+
+      addDiagLog("[MOBILE-DIAG-06] Health check processing completed. Execution continuing...");
+
+      addDiagLog("[MOBILE-DIAG-07] Before FormData creation.");
+      addDiagLog("[MOBILE-DIAG-BEFORE-FORM-DATA-CONSTRUCTOR] Instantiating FormData...");
+      const formData = new FormData();
+      addDiagLog("[MOBILE-DIAG-AFTER-FORM-DATA-CONSTRUCTOR] FormData instantiated.");
+      
+      addDiagLog("[MOBILE-DIAG-BEFORE-FILE-APPEND] Appending file...");
+      formData.append('file', file);
+      addDiagLog("[MOBILE-DIAG-AFTER-FILE-APPEND] File appended.");
+      
+      addDiagLog("[MOBILE-DIAG-BEFORE-JD-APPEND] Appending job description...");
+      formData.append('jobDescription', jobDescription);
+      addDiagLog("[MOBILE-DIAG-AFTER-JD-APPEND] Job description appended.");
+
+      addDiagLog("[MOBILE-DIAG-08] FormData created.");
+      
+      addDiagLog("[MOBILE-DIAG-BEFORE-FORM-DATA-INSPECTION] Inspecting FormData keys...");
+      try {
+        for (let key of (formData as any).keys()) {
+          addDiagLog(`[MOBILE-DIAG-08-KEY] FormData entry key: ${key}`);
+        }
+      } catch (fdErr: any) {
+        addDiagLog(`[MOBILE-DIAG-08-ERR] Failed to iterate keys: ${fdErr.message}`);
+      }
+      addDiagLog("[MOBILE-DIAG-AFTER-FORM-DATA-INSPECTION] FormData keys inspected.");
+
+      const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
+      addDiagLog(`[MOBILE-DIAG-09] Immediately before axios.post(). Params: ` +
+        `URL=${targetEndpoint}, ` +
+        `Method=POST, ` +
+        `FileName=${file.name}, ` +
+        `FileSize=${file.size} bytes, ` +
+        `FileType=${file.type}, ` +
+        `navigator.onLine=${navigator.onLine}, ` +
+        `AbortSignalAttached=false, ` +
+        `Timeout=120000ms`);
+
+      try {
+        addDiagLog(`[MOBILE-DIAG-10] Invoking axios.post() to target: ${targetEndpoint}`);
+        addDiagLog(`[MOBILE-DIAG-BEFORE-AXIOS-POST] Triggering axios.post...`);
+        const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
+          timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
+        });
+        addDiagLog(`[MOBILE-DIAG-AFTER-AXIOS-POST] axios.post resolved.`);
+        
+        const duration = Date.now() - startTime;
+        addDiagLog(`[MOBILE-DIAG-11] POST success! Status: ${response.status}, Duration: ${duration}ms`);
+        
+        setTempResult(response.data);
+        setApiActive(false);
+
+      } catch (err: any) {
+        const duration = Date.now() - startTime;
+        addDiagLog(`[MOBILE-DIAG-12] POST error! Duration: ${duration}ms.`);
+        
+        // Detailed Axios error diagnostics (Phase 2):
+        console.error(`[DIAGNOSTIC ERROR] Full Axios error:`, err);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.name: ${err.name}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.message: ${err.message}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.code: ${err.code}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.response?.status: ${err.response?.status}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.response?.data: ${JSON.stringify(err.response?.data)}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.request exists: ${!!err.request}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] error.cause: ${err.cause ? err.cause.message || err.cause : 'none'}`);
+        addDiagLog(`[DIAGNOSTIC ERROR] navigator.onLine: ${navigator.onLine}`);
+
+        let errorMessage = 'An error occurred during analysis.';
+        if (err.response) {
+          const status = err.response.status;
+          if (status === 400) {
+            errorMessage = `Bad Request (400): ${typeof err.response.data === 'string' ? err.response.data : err.response.data.message || 'Please check your inputs.'}`;
+          } else if (status === 413) {
+            errorMessage = 'File too large (413). Please upload a smaller resume (max 10MB).';
+          } else if (status === 500) {
+            errorMessage = 'Internal Server Error (500). The AI service encountered an issue.';
+          } else if (status === 503 || status === 504) {
+            errorMessage = 'Server is currently busy or timed out (503/504). Please try again in a moment.';
+          } else {
+            errorMessage = `Server Error (${status}): ${err.response.data.message || err.message}`;
+          }
+        } else if (err.request) {
+          const isOffline = !window.navigator.onLine;
+          if (isOffline) {
+            errorMessage = 'Network connection lost. Please check your internet connectivity on your mobile device.';
+          } else if (duration >= 120000) {
+            errorMessage = `Request timed out after ${(duration / 1000).toFixed(1)} seconds. The Render server took too long to respond (likely due to cold start wakeup). Please try again.`;
+          } else {
+            errorMessage = `No response received from the backend at ${API_BASE_URL}. This can happen due to:\n` +
+              `1. Deployed Render server cold start (waking up from sleep mode, which can take up to 60-90 seconds).\n` +
+              `2. CORS policy restrictions preventing requests from this domain.\n` +
+              `3. Secure connection issues (HTTPS/SSL validation on mobile).\n\n` +
+              `Raw error details: ${err.message || 'Unknown network error'}`;
+          }
+        } else {
+          errorMessage = `Request Error: ${err.message}`;
+        }
+
+        setError(errorMessage);
+        setShowProgressLoader(false);
+        setLoading(false);
+      }
+    } catch (outerErr: any) {
+      console.error("[OUTER DIAGNOSTIC ERROR] Caught uncaught error inside handleAnalyze:", outerErr);
+      addDiagLog(`[OUTER-DIAG-ERROR] Uncaught JavaScript exception! Name: ${outerErr.name} | Message: ${outerErr.message} | Stack: ${outerErr.stack}`);
+      setError(`Uncaught Client Error: ${outerErr.message}`);
       setShowProgressLoader(false);
       setLoading(false);
     }
