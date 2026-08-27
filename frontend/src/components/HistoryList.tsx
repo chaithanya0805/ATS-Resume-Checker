@@ -14,6 +14,7 @@ export const HistoryList = ({ refreshTrigger = 0 }: { refreshTrigger?: number })
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [deletingIds, setDeletingIds] = useState<number[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({
     message: "",
     type: "success",
@@ -46,15 +47,24 @@ export const HistoryList = ({ refreshTrigger = 0 }: { refreshTrigger?: number })
 
   const handleDeleteConfirm = async () => {
     if (itemToDelete !== null) {
+      const idToDelete = itemToDelete;
+      const previousHistory = [...history];
+
+      // Optimistic update: remove item from UI immediately
+      setHistory((prev) => prev.filter((item) => item.id !== idToDelete));
+      setDeletingIds((prev) => [...prev, idToDelete]);
+      setItemToDelete(null);
+
       try {
-        await axios.delete(`${API_BASE_URL}/api/v1/resume/history/${itemToDelete}`);
-        setHistory((prev) => prev.filter((item) => item.id !== itemToDelete));
+        await axios.delete(`${API_BASE_URL}/api/v1/resume/history/${idToDelete}`);
         showToastMessage("Analysis deleted successfully.", "success");
       } catch (error) {
         console.error("Failed to delete history item", error);
+        // Rollback on failure
+        setHistory(previousHistory);
         showToastMessage("Unable to delete the analysis. Please try again.", "error");
       } finally {
-        setItemToDelete(null);
+        setDeletingIds((prev) => prev.filter((id) => id !== idToDelete));
       }
     }
   };
@@ -101,7 +111,8 @@ export const HistoryList = ({ refreshTrigger = 0 }: { refreshTrigger?: number })
                 </div>
                 <button
                   onClick={() => setItemToDelete(item.id)}
-                  className="p-2 text-gray-400 hover:text-danger hover:bg-danger/10 rounded-lg transition-all duration-200"
+                  disabled={deletingIds.includes(item.id)}
+                  className="p-2 text-gray-400 hover:text-danger hover:bg-danger/10 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Delete analysis"
                 >
                   <Trash2 className="w-5 h-5" />
