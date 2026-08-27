@@ -23,20 +23,91 @@ function App() {
   const [apiActive, setApiActive] = useState(false);
   const [tempResult, setTempResult] = useState<AnalysisResult | null>(null);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [diagLogs, setDiagLogs] = useState<string[]>([]);
+  const [showDiagPanel, setShowDiagPanel] = useState(false);
+
+  const addDiagLog = (message: string) => {
+    const timeStr = new Date().toLocaleTimeString();
+    console.log(message);
+    setDiagLogs((prev) => [...prev, `[${timeStr}] ${message}`]);
+  };
 
   useEffect(() => {
-    console.log(`[STARTUP] Active API Base URL: ${API_BASE_URL}`);
+    addDiagLog(`[STARTUP] Active API Base URL: ${API_BASE_URL}`);
   }, []);
 
+  const runTestJson = async () => {
+    const startTime = Date.now();
+    const url = `${API_BASE_URL}/api/v1/resume/test-json`;
+    addDiagLog(`[TEST-JSON] TEST STARTED | URL: ${url} | Method: POST | Type: JSON | Start: ${new Date(startTime).toISOString()}`);
+    try {
+      const res = await axios.post(url, { testKey: "testValue" }, { timeout: 30000 });
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-JSON] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
+    } catch (err: any) {
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-JSON] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+    }
+  };
+
+  const runTestMultipartText = async () => {
+    const startTime = Date.now();
+    const url = `${API_BASE_URL}/api/v1/resume/test-multipart-text`;
+    addDiagLog(`[TEST-MULTIPART-TEXT] TEST STARTED | URL: ${url} | Method: POST | Type: Multipart (Text) | Start: ${new Date(startTime).toISOString()}`);
+    try {
+      const textFile = new File(["Hello World from mobile diagnostics"], "test.txt", { type: "text/plain" });
+      const fData = new FormData();
+      fData.append("file", textFile);
+      fData.append("description", "Testing tiny multipart text from mobile device");
+
+      const res = await axios.post(url, fData, { timeout: 30000 });
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-MULTIPART-TEXT] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
+    } catch (err: any) {
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-MULTIPART-TEXT] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+    }
+  };
+
+  const runTestSelectedFile = async () => {
+    if (!file) {
+      addDiagLog("[TEST-FILE] Selected File test aborted: No file selected! Please select a file first.");
+      return;
+    }
+    const startTime = Date.now();
+    const url = `${API_BASE_URL}/api/v1/resume/test-multipart-file`;
+    addDiagLog(`[TEST-FILE] TEST STARTED | URL: ${url} | Method: POST | Type: Multipart (Selected Resume File) | Start: ${new Date(startTime).toISOString()}`);
+    addDiagLog(`[TEST-FILE] File properties: Name=${file.name}, Size=${file.size} bytes, Type=${file.type}`);
+    try {
+      const fData = new FormData();
+      fData.append("file", file);
+
+      const res = await axios.post(url, fData, { timeout: 60000 });
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-FILE] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
+    } catch (err: any) {
+      const duration = Date.now() - startTime;
+      addDiagLog(`[TEST-FILE] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+    }
+  };
+
   const handleAnalyze = async () => {
+    addDiagLog("[MOBILE-DIAG-01] Button clicked: handleAnalyze invoked.");
+    
     if (!file) {
       setError('Please upload a resume (PDF).');
+      addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No file selected.");
       return;
     }
     if (!jobDescription.trim()) {
       setError('Please provide a job description.');
+      addDiagLog("[MOBILE-DIAG-01-ABORT] Validation failed: No job description.");
       return;
     }
+
+    addDiagLog("[MOBILE-DIAG-02] Validation passed.");
+    addDiagLog(`[MOBILE-DIAG-03] File exists. Name: ${file.name}`);
+    addDiagLog(`[MOBILE-DIAG-04] File instanceof File: ${file instanceof File}`);
 
     setError(null);
     setLoading(true);
@@ -45,72 +116,75 @@ function App() {
     setTempResult(null);
 
     const startTime = Date.now();
-    console.log(`[API REQUEST] Starting ATS check process at ${new Date(startTime).toISOString()}`);
-    console.log(`[API REQUEST] Target URL: ${API_BASE_URL}/api/v1/resume/check`);
-    
-    // FRONTEND diagnostics (Phase 2):
-    console.log(`[DIAGNOSTIC] file instanceof File:`, file instanceof File);
-    console.log(`[DIAGNOSTIC] file.name:`, file ? file.name : "null");
-    console.log(`[DIAGNOSTIC] file.type:`, file ? file.type : "null");
-    console.log(`[DIAGNOSTIC] file.size:`, file ? file.size : "null");
-    console.log(`[DIAGNOSTIC] Before FormData creation`);
+    addDiagLog("[MOBILE-DIAG-05] Before health check.");
 
+    // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
+    try {
+      addDiagLog(`[MOBILE-DIAG-05A] Health request started. URL: ${API_BASE_URL}/api/v1/resume/health`);
+      const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
+      addDiagLog(`[MOBILE-DIAG-05B] Health response received. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
+    } catch (healthErr: any) {
+      addDiagLog(`[MOBILE-DIAG-05C] Health request failed. Error: ${healthErr.message}`);
+    }
+
+    addDiagLog("[MOBILE-DIAG-06] Health check processing completed. Execution continuing...");
+
+    addDiagLog("[MOBILE-DIAG-07] Before FormData creation.");
     const formData = new FormData();
     formData.append('file', file);
     formData.append('jobDescription', jobDescription);
 
-    console.log(`[DIAGNOSTIC] After FormData creation`);
-    for (let key of (formData as any).keys()) {
-      console.log(`[DIAGNOSTIC] FormData key:`, key);
+    addDiagLog("[MOBILE-DIAG-08] FormData created.");
+    try {
+      for (let key of (formData as any).keys()) {
+        addDiagLog(`[MOBILE-DIAG-08-KEY] FormData entry key: ${key}`);
+      }
+    } catch (fdErr: any) {
+      addDiagLog(`[MOBILE-DIAG-08-ERR] Failed to iterate keys: ${fdErr.message}`);
     }
 
-    // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
-    try {
-      console.log(`[API HEALTH CHECK] Pinging health endpoint: ${API_BASE_URL}/api/v1/resume/health`);
-      const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
-      console.log(`[API HEALTH CHECK] Health response:`, healthRes.data);
-    } catch (healthErr: any) {
-      console.warn(`[API HEALTH CHECK FAILED] Failed to reach health endpoint:`, healthErr.message);
-    }
+    const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
+    addDiagLog(`[MOBILE-DIAG-09] Immediately before axios.post(). Params: ` +
+      `URL=${targetEndpoint}, ` +
+      `Method=POST, ` +
+      `FileName=${file.name}, ` +
+      `FileSize=${file.size} bytes, ` +
+      `FileType=${file.type}, ` +
+      `navigator.onLine=${navigator.onLine}, ` +
+      `AbortSignalAttached=false, ` +
+      `Timeout=120000ms`);
 
     try {
-      // NOTE: We do not set the 'Content-Type' header manually. Letting Axios set it automatically
-      // allows the browser to properly generate the boundary parameter, which fixes failures on mobile.
-      const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
-      console.log(`[DIAGNOSTIC] Immediately before axios POST to: ${targetEndpoint}`);
-      console.log(`[DIAGNOSTIC] POST start timestamp: ${new Date().toISOString()}`);
+      addDiagLog(`[MOBILE-DIAG-10] Invoking axios.post() to target: ${targetEndpoint}`);
       
       const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
         timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
       });
       
       const duration = Date.now() - startTime;
-      console.log(`[API RESPONSE] Success! Status: ${response.status}, Duration: ${duration}ms`);
+      addDiagLog(`[MOBILE-DIAG-11] POST success! Status: ${response.status}, Duration: ${duration}ms`);
       
       setTempResult(response.data);
       setApiActive(false);
 
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      console.error(`[API ERROR] Request failed after ${duration}ms.`);
+      addDiagLog(`[MOBILE-DIAG-12] POST error! Duration: ${duration}ms.`);
       
       // Detailed Axios error diagnostics (Phase 2):
-      console.error(`[DIAGNOSTIC ERROR] error.name:`, err.name);
-      console.error(`[DIAGNOSTIC ERROR] error.message:`, err.message);
-      console.error(`[DIAGNOSTIC ERROR] error.code:`, err.code);
-      console.error(`[DIAGNOSTIC ERROR] error.response?.status:`, err.response?.status);
-      console.error(`[DIAGNOSTIC ERROR] error.response?.data:`, err.response?.data);
-      console.error(`[DIAGNOSTIC ERROR] error.request exists:`, !!err.request);
-      console.error(`[DIAGNOSTIC ERROR] error.cause:`, err.cause);
-      console.error(`[DIAGNOSTIC ERROR] navigator.onLine:`, navigator.onLine);
-      console.error(`[DIAGNOSTIC ERROR] request duration: ${duration}ms`);
+      console.error(`[DIAGNOSTIC ERROR] Full Axios error:`, err);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.name: ${err.name}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.message: ${err.message}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.code: ${err.code}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.response?.status: ${err.response?.status}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.response?.data: ${JSON.stringify(err.response?.data)}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.request exists: ${!!err.request}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] error.cause: ${err.cause ? err.cause.message || err.cause : 'none'}`);
+      addDiagLog(`[DIAGNOSTIC ERROR] navigator.onLine: ${navigator.onLine}`);
 
       let errorMessage = 'An error occurred during analysis.';
       if (err.response) {
-        // The server responded with a status code outside the 2xx range
         const status = err.response.status;
-        console.error(`[API RESPONSE ERROR] Status: ${status}, Body:`, err.response.data);
-        
         if (status === 400) {
           errorMessage = `Bad Request (400): ${typeof err.response.data === 'string' ? err.response.data : err.response.data.message || 'Please check your inputs.'}`;
         } else if (status === 413) {
@@ -123,9 +197,6 @@ function App() {
           errorMessage = `Server Error (${status}): ${err.response.data.message || err.message}`;
         }
       } else if (err.request) {
-        // The request was made but no response was received
-        console.error('[API NETWORK ERROR] No response received:', err.request);
-        
         const isOffline = !window.navigator.onLine;
         if (isOffline) {
           errorMessage = 'Network connection lost. Please check your internet connectivity on your mobile device.';
@@ -139,8 +210,6 @@ function App() {
             `Raw error details: ${err.message || 'Unknown network error'}`;
         }
       } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('[API SETUP ERROR] Error message:', err.message);
         errorMessage = `Request Error: ${err.message}`;
       }
 
@@ -298,6 +367,56 @@ function App() {
         </AnimatePresence>
 
         <HistoryList refreshTrigger={historyRefreshTrigger} />
+
+        {/* Collapsible Mobile Diagnostics Panel */}
+        <div className="mt-10 p-6 bg-yellow-950/20 border border-yellow-500/20 backdrop-blur rounded-xl text-left">
+          <button 
+            onClick={() => setShowDiagPanel(!showDiagPanel)}
+            className="text-yellow-500 font-bold flex items-center justify-between w-full text-base md:text-lg"
+          >
+            <span>🛠 Mobile Diagnostics Panel (Temporary)</span>
+            <span>{showDiagPanel ? "▲ Hide" : "▼ Show"}</span>
+          </button>
+          
+          {showDiagPanel && (
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <button 
+                  onClick={runTestJson} 
+                  className="px-4 py-2 bg-yellow-600/30 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs md:text-sm font-semibold hover:bg-yellow-600/50 transition-all"
+                >
+                  Test A: JSON POST
+                </button>
+                <button 
+                  onClick={runTestMultipartText} 
+                  className="px-4 py-2 bg-yellow-600/30 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs md:text-sm font-semibold hover:bg-yellow-600/50 transition-all"
+                >
+                  Test B: Multipart Text
+                </button>
+                <button 
+                  onClick={runTestSelectedFile} 
+                  className="px-4 py-2 bg-yellow-600/30 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs md:text-sm font-semibold hover:bg-yellow-600/50 transition-all"
+                >
+                  Test C: PDF/Doc Upload
+                </button>
+                <button 
+                  onClick={() => setDiagLogs([])} 
+                  className="px-4 py-2 bg-red-950/30 text-red-300 border border-red-500/30 rounded-lg text-xs md:text-sm font-semibold hover:bg-red-950/50 transition-all ml-auto"
+                >
+                  Clear Logs
+                </button>
+              </div>
+              
+              <div className="bg-black/40 p-4 rounded-lg border border-white/5 font-mono text-[10px] md:text-xs text-yellow-400/90 max-h-60 overflow-y-auto space-y-1">
+                {diagLogs.length === 0 ? (
+                  <div className="text-gray-500">No logs generated. Click a test or run the resume analyzer.</div>
+                ) : (
+                  diagLogs.map((logStr, idx) => <div key={idx}>{logStr}</div>)
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <footer className="mt-16 pt-8 border-t border-white/10 text-center text-xs space-y-1">
           <p className="text-gray-300">© 2026 Chaithanya</p>
