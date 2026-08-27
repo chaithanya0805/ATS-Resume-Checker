@@ -26,12 +26,27 @@ public class ResumeController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("jobDescription") String jobDescription) {
         
-        if (file.isEmpty() || jobDescription == null || jobDescription.trim().isEmpty()) {
+        String filename = file != null ? file.getOriginalFilename() : "null";
+        long fileSize = file != null ? file.getSize() : 0;
+        log.info("[API REQUEST] Incoming ATS check request received. File: {}, Size: {} bytes", filename, fileSize);
+
+        if (file == null || file.isEmpty() || jobDescription == null || jobDescription.trim().isEmpty()) {
+            log.warn("[API REQUEST] Validation failed: file is empty or jobDescription is blank");
             return ResponseEntity.badRequest().build();
         }
 
-        ResumeCheckResponse response = resumeAnalyzerService.analyzeResume(file, jobDescription);
-        return ResponseEntity.ok(response);
+        log.info("[API REQUEST] Starting processing for file: {}", filename);
+        long startTime = System.currentTimeMillis();
+
+        try {
+            ResumeCheckResponse response = resumeAnalyzerService.analyzeResume(file, jobDescription);
+            long durationMs = System.currentTimeMillis() - startTime;
+            log.info("[API REQUEST] Completed successfully. File: {}, Duration: {} ms", filename, durationMs);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[API ERROR] Failed to analyze resume for file: " + filename, e);
+            throw e;
+        }
     }
 
     @GetMapping("/history")

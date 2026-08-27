@@ -40,38 +40,66 @@ function App() {
     setApiActive(true);
     setTempResult(null);
 
+    const startTime = Date.now();
+    console.log(`[API REQUEST] Starting ATS check at ${new Date(startTime).toISOString()}`);
+    console.log(`[API REQUEST] Target URL: ${API_BASE_URL}/api/v1/resume/check`);
+    console.log(`[API REQUEST] File Name: ${file.name}`);
+    console.log(`[API REQUEST] File Size: ${file.size} bytes`);
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('jobDescription', jobDescription);
 
     try {
-      const response = await axios.post<AnalysisResult>(`${API_BASE_URL}/api/v1/resume/check`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      // NOTE: We do not set the 'Content-Type' header manually. Letting Axios set it automatically
+      // allows the browser to properly generate the boundary parameter, which fixes failures on mobile.
+      const response = await axios.post<AnalysisResult>(`${API_BASE_URL}/api/v1/resume/check`, formData);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[API RESPONSE] Success! Status: ${response.status}, Duration: ${duration}ms`);
+      
       setTempResult(response.data);
       setApiActive(false);
 
     } catch (err: any) {
-      let errorMessage = 'An error occurred during analysis. Make sure the backend is running.';
+      const duration = Date.now() - startTime;
+      console.error(`[API ERROR] Request failed after ${duration}ms. Details:`, err);
+
+      let errorMessage = 'An error occurred during analysis.';
       if (err.response) {
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data && typeof err.response.data.message === 'string') {
-          errorMessage = err.response.data.message;
-        } else if (err.response.data && typeof err.response.data.error === 'string') {
-          errorMessage = err.response.data.error;
+        // The server responded with a status code outside the 2xx range
+        const status = err.response.status;
+        console.error(`[API RESPONSE ERROR] Status: ${status}, Body:`, err.response.data);
+        
+        if (status === 400) {
+          errorMessage = `Bad Request (400): ${typeof err.response.data === 'string' ? err.response.data : err.response.data.message || 'Please check your inputs.'}`;
+        } else if (status === 413) {
+          errorMessage = 'File too large (413). Please upload a smaller resume (max 10MB).';
+        } else if (status === 500) {
+          errorMessage = 'Internal Server Error (500). The AI service encountered an issue.';
+        } else if (status === 503 || status === 504) {
+          errorMessage = 'Server is currently busy or timed out (503/504). Please try again in a moment.';
         } else {
-          errorMessage = `Backend Error (Status ${err.response.status}): ${JSON.stringify(err.response.data)}`;
+          errorMessage = `Server Error (${status}): ${err.response.data.message || err.message}`;
         }
       } else if (err.request) {
-        errorMessage = 'No response received from the backend. Please check if the server is awake and CORS is configured.';
+        // The request was made but no response was received
+        console.error('[API NETWORK ERROR] No response received:', err.request);
+        
+        if (duration > 25000) {
+          errorMessage = `Connection timed out after ${(duration / 1000).toFixed(1)} seconds. This usually happens if the backend server is waking up from a sleep state. Please try again.`;
+        } else if (!window.navigator.onLine) {
+          errorMessage = 'Network connection lost. Please check your internet connectivity.';
+        } else {
+          errorMessage = 'No response from the backend. This might be due to a server wakeup cold start or CORS issues. Please ensure the backend server is running and accessible.';
+        }
       } else {
-        errorMessage = err.message;
+        // Something happened in setting up the request that triggered an Error
+        console.error('[API SETUP ERROR] Error message:', err.message);
+        errorMessage = `Request Error: ${err.message}`;
       }
+
       setError(errorMessage);
-      console.error(err);
       setShowProgressLoader(false);
       setLoading(false);
     }
