@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ScanLine, Loader2, RotateCcw } from 'lucide-react';
@@ -24,6 +24,10 @@ function App() {
   const [tempResult, setTempResult] = useState<AnalysisResult | null>(null);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
+  useEffect(() => {
+    console.log(`[STARTUP] Active API Base URL: ${API_BASE_URL}`);
+  }, []);
+
   const handleAnalyze = async () => {
     if (!file) {
       setError('Please upload a resume (PDF).');
@@ -41,10 +45,19 @@ function App() {
     setTempResult(null);
 
     const startTime = Date.now();
-    console.log(`[API REQUEST] Starting ATS check at ${new Date(startTime).toISOString()}`);
+    console.log(`[API REQUEST] Starting ATS check process at ${new Date(startTime).toISOString()}`);
     console.log(`[API REQUEST] Target URL: ${API_BASE_URL}/api/v1/resume/check`);
     console.log(`[API REQUEST] File Name: ${file.name}`);
     console.log(`[API REQUEST] File Size: ${file.size} bytes`);
+
+    // Ping health endpoint before the main request to diagnose API accessibility and trigger Render cold start wake up
+    try {
+      console.log(`[API HEALTH CHECK] Pinging health endpoint: ${API_BASE_URL}/api/v1/resume/health`);
+      const healthRes = await axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 });
+      console.log(`[API HEALTH CHECK] Health response:`, healthRes.data);
+    } catch (healthErr: any) {
+      console.warn(`[API HEALTH CHECK FAILED] Failed to reach health endpoint:`, healthErr.message);
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -53,7 +66,12 @@ function App() {
     try {
       // NOTE: We do not set the 'Content-Type' header manually. Letting Axios set it automatically
       // allows the browser to properly generate the boundary parameter, which fixes failures on mobile.
-      const response = await axios.post<AnalysisResult>(`${API_BASE_URL}/api/v1/resume/check`, formData);
+      const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
+      console.log(`[API REQUEST] Sending POST request to complete endpoint: ${targetEndpoint}`);
+      
+      const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
+        timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
+      });
       
       const duration = Date.now() - startTime;
       console.log(`[API RESPONSE] Success! Status: ${response.status}, Duration: ${duration}ms`);
@@ -86,12 +104,17 @@ function App() {
         // The request was made but no response was received
         console.error('[API NETWORK ERROR] No response received:', err.request);
         
-        if (duration > 25000) {
-          errorMessage = `Connection timed out after ${(duration / 1000).toFixed(1)} seconds. This usually happens if the backend server is waking up from a sleep state. Please try again.`;
-        } else if (!window.navigator.onLine) {
-          errorMessage = 'Network connection lost. Please check your internet connectivity.';
+        const isOffline = !window.navigator.onLine;
+        if (isOffline) {
+          errorMessage = 'Network connection lost. Please check your internet connectivity on your mobile device.';
+        } else if (duration >= 120000) {
+          errorMessage = `Request timed out after ${(duration / 1000).toFixed(1)} seconds. The Render server took too long to respond (likely due to cold start wakeup). Please try again.`;
         } else {
-          errorMessage = 'No response from the backend. This might be due to a server wakeup cold start or CORS issues. Please ensure the backend server is running and accessible.';
+          errorMessage = `No response received from the backend at ${API_BASE_URL}. This can happen due to:\n` +
+            `1. Deployed Render server cold start (waking up from sleep mode, which can take up to 60-90 seconds).\n` +
+            `2. CORS policy restrictions preventing requests from this domain.\n` +
+            `3. Secure connection issues (HTTPS/SSL validation on mobile).\n\n` +
+            `Raw error details: ${err.message || 'Unknown network error'}`;
         }
       } else {
         // Something happened in setting up the request that triggered an Error

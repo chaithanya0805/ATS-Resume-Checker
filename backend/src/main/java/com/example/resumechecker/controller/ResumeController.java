@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/resume")
@@ -21,10 +22,17 @@ public class ResumeController {
     private final ResumeAnalyzerService resumeAnalyzerService;
     private final AnalysisResultRepository repository;
 
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        log.info("[HEALTH] Health check endpoint reached.");
+        return ResponseEntity.ok(Map.of("status", "UP"));
+    }
+
     @PostMapping("/check")
     public ResponseEntity<ResumeCheckResponse> checkResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam("jobDescription") String jobDescription) {
+        log.info("[API POST /check] VERY FIRST LINE of checkResume reached.");
         
         String filename = file != null ? file.getOriginalFilename() : "null";
         long fileSize = file != null ? file.getSize() : 0;
