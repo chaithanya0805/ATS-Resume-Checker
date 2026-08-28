@@ -37,6 +37,7 @@ function App() {
   }, []);
 
   const runTestJson = async () => {
+    setShowDiagPanel(true);
     const startTime = Date.now();
     const url = `${API_BASE_URL}/api/v1/resume/test-json`;
     addDiagLog(`[TEST-JSON] TEST STARTED | URL: ${url} | Method: POST | Type: JSON | Start: ${new Date(startTime).toISOString()}`);
@@ -46,11 +47,24 @@ function App() {
       addDiagLog(`[TEST-JSON] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      addDiagLog(`[TEST-JSON] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+      addDiagLog(`[TEST-JSON] FAILURE | Duration: ${duration}ms`);
+      addDiagLog(`  - error.message: ${err.message}`);
+      addDiagLog(`  - error.code: ${err.code}`);
+      addDiagLog(`  - error.name: ${err.name}`);
+      addDiagLog(`  - error.config.url: ${err.config?.url}`);
+      addDiagLog(`  - error.config.method: ${err.config?.method}`);
+      addDiagLog(`  - error.config.headers: ${JSON.stringify(err.config?.headers)}`);
+      addDiagLog(`  - error.request exists: ${!!err.request}`);
+      addDiagLog(`  - error.response exists: ${!!err.response}`);
+      if (err.response) {
+        addDiagLog(`  - error.response.status: ${err.response.status}`);
+        addDiagLog(`  - error.response.data: ${JSON.stringify(err.response.data)}`);
+      }
     }
   };
 
   const runTestMultipartText = async () => {
+    setShowDiagPanel(true);
     const startTime = Date.now();
     const url = `${API_BASE_URL}/api/v1/resume/test-multipart-text`;
     addDiagLog(`[TEST-MULTIPART-TEXT] TEST STARTED | URL: ${url} | Method: POST | Type: Multipart (Text) | Start: ${new Date(startTime).toISOString()}`);
@@ -65,11 +79,24 @@ function App() {
       addDiagLog(`[TEST-MULTIPART-TEXT] SUCCESS | Status: ${res.status} | Duration: ${duration}ms | Data: ${JSON.stringify(res.data)}`);
     } catch (err: any) {
       const duration = Date.now() - startTime;
-      addDiagLog(`[TEST-MULTIPART-TEXT] FAILURE | Duration: ${duration}ms | ErrorName: ${err.name} | ErrorMessage: ${err.message} | Code: ${err.code} | Status: ${err.response?.status} | Data: ${JSON.stringify(err.response?.data)}`);
+      addDiagLog(`[TEST-MULTIPART-TEXT] FAILURE | Duration: ${duration}ms`);
+      addDiagLog(`  - error.message: ${err.message}`);
+      addDiagLog(`  - error.code: ${err.code}`);
+      addDiagLog(`  - error.name: ${err.name}`);
+      addDiagLog(`  - error.config.url: ${err.config?.url}`);
+      addDiagLog(`  - error.config.method: ${err.config?.method}`);
+      addDiagLog(`  - error.config.headers: ${JSON.stringify(err.config?.headers)}`);
+      addDiagLog(`  - error.request exists: ${!!err.request}`);
+      addDiagLog(`  - error.response exists: ${!!err.response}`);
+      if (err.response) {
+        addDiagLog(`  - error.response.status: ${err.response.status}`);
+        addDiagLog(`  - error.response.data: ${JSON.stringify(err.response.data)}`);
+      }
     }
   };
 
   const runTestSelectedFile = async () => {
+    setShowDiagPanel(true);
     if (!file) {
       addDiagLog("[TEST-FILE] Selected File test aborted: No file selected! Please select a file first.");
       return;
@@ -102,17 +129,24 @@ function App() {
     } catch (err: any) {
       const duration = Date.now() - startTime;
       addDiagLog(`[TEST-FILE] FAILURE | Duration: ${duration}ms`);
-      addDiagLog(`[TEST-FILE] error.name: ${err.name}`);
-      addDiagLog(`[TEST-FILE] error.message: ${err.message}`);
-      addDiagLog(`[TEST-FILE] error.code: ${err.code}`);
-      addDiagLog(`[TEST-FILE] error.response: ${err.response ? JSON.stringify(err.response.data) : 'undefined'}`);
-      addDiagLog(`[TEST-FILE] error.request exists: ${!!err.request}`);
-      addDiagLog(`[TEST-FILE] navigator.onLine: ${navigator.onLine}`);
+      addDiagLog(`  - error.message: ${err.message}`);
+      addDiagLog(`  - error.code: ${err.code}`);
+      addDiagLog(`  - error.name: ${err.name}`);
+      addDiagLog(`  - error.config.url: ${err.config?.url}`);
+      addDiagLog(`  - error.config.method: ${err.config?.method}`);
+      addDiagLog(`  - error.config.headers: ${JSON.stringify(err.config?.headers)}`);
+      addDiagLog(`  - error.request exists: ${!!err.request}`);
+      addDiagLog(`  - error.response exists: ${!!err.response}`);
+      if (err.response) {
+        addDiagLog(`  - error.response.status: ${err.response.status}`);
+        addDiagLog(`  - error.response.data: ${JSON.stringify(err.response.data)}`);
+      }
     }
   };
 
   const handleAnalyze = async () => {
     try {
+      setShowDiagPanel(true);
       addDiagLog("[ATS] Button clicked");
       addDiagLog(`[ATS] File exists: ${!!file}`);
       if (file) {
@@ -186,16 +220,23 @@ function App() {
 
       } catch (err: any) {
         const duration = Date.now() - startTime;
-        addDiagLog(`[ATS] Error caught with full safe details: ${err.message || err}`);
+        addDiagLog(`[ATS] Error caught with full safe details:`);
+        addDiagLog(`  - error.message: ${err.message}`);
+        addDiagLog(`  - error.code: ${err.code}`);
+        addDiagLog(`  - error.name: ${err.name}`);
+        addDiagLog(`  - error.config.url: ${err.config?.url}`);
+        addDiagLog(`  - error.config.method: ${err.config?.method}`);
+        addDiagLog(`  - error.config.headers: ${JSON.stringify(err.config?.headers)}`);
+        addDiagLog(`  - error.config.timeout: ${err.config?.timeout}ms`);
+        addDiagLog(`  - error.request exists: ${!!err.request}`);
+        addDiagLog(`  - error.response exists: ${!!err.response}`);
+        if (err.response) {
+          addDiagLog(`  - error.response.status: ${err.response.status}`);
+          addDiagLog(`  - error.response.data: ${JSON.stringify(err.response.data)}`);
+        }
         
         // Detailed Axios error diagnostics (Phase 2):
         console.error(`[DIAGNOSTIC ERROR] Full Axios error:`, err);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.name: ${err.name}`);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.message: ${err.message}`);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.code: ${err.code}`);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.response?.status: ${err.response?.status}`);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.response?.data: ${JSON.stringify(err.response?.data)}`);
-        addDiagLog(`[DIAGNOSTIC ERROR] error.request exists: ${!!err.request}`);
         addDiagLog(`[DIAGNOSTIC ERROR] error.cause: ${err.cause ? err.cause.message || err.cause : 'none'}`);
         addDiagLog(`[DIAGNOSTIC ERROR] navigator.onLine: ${navigator.onLine}`);
 
