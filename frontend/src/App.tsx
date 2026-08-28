@@ -113,7 +113,13 @@ function App() {
 
   const handleAnalyze = async () => {
     try {
-      addDiagLog("[MOBILE-DIAG-01] Button clicked: handleAnalyze invoked.");
+      addDiagLog("[ATS] Button clicked");
+      addDiagLog(`[ATS] File exists: ${!!file}`);
+      if (file) {
+        addDiagLog(`[ATS] File name: ${file.name}`);
+        addDiagLog(`[ATS] File size: ${file.size} bytes`);
+      }
+      addDiagLog(`[ATS] JD exists: ${!!jobDescription.trim()}`);
       
       if (!file) {
         setError('Please upload a resume (PDF).');
@@ -126,9 +132,7 @@ function App() {
         return;
       }
 
-      addDiagLog("[MOBILE-DIAG-02] Validation passed.");
-      addDiagLog(`[MOBILE-DIAG-03] File exists. Name: ${file.name}`);
-      addDiagLog(`[MOBILE-DIAG-04] File instanceof File: ${file instanceof File}`);
+      addDiagLog("[ATS] Validation passed");
 
       setError(null);
       setLoading(true);
@@ -137,70 +141,42 @@ function App() {
       setTempResult(null);
 
       const startTime = Date.now();
-      addDiagLog("[MOBILE-DIAG-05] Before health check.");
+      addDiagLog("[ATS] Starting health check");
 
       // Ping health endpoint asynchronously (non-blocking) so we do not break the synchronous user gesture tick.
       // Awaiting here on mobile browsers causes Chrome to invalidate/expire the file access permissions.
       try {
-        addDiagLog(`[MOBILE-DIAG-05A] Health request started (background/non-blocking). URL: ${API_BASE_URL}/api/v1/resume/health`);
-        addDiagLog(`[MOBILE-DIAG-BEFORE-HEALTH] Triggering background health check GET...`);
         axios.get(`${API_BASE_URL}/api/v1/resume/health`, { timeout: 120000 })
           .then((healthRes) => {
+            addDiagLog(`[ATS] Health check success`);
             addDiagLog(`[MOBILE-DIAG-AFTER-HEALTH] Health check GET resolved. Status: ${healthRes.status}, Data: ${JSON.stringify(healthRes.data)}`);
-            addDiagLog(`[MOBILE-DIAG-05B] Health response received in background.`);
           })
           .catch((healthErr) => {
-            addDiagLog(`[MOBILE-DIAG-05C] Background Health request failed. Error: ${healthErr.message}`);
+            addDiagLog(`[ATS] Health check failed: ${healthErr.message}`);
           });
       } catch (healthErr: any) {
-        addDiagLog(`[MOBILE-DIAG-05-OUTER-ERR] Failed to setup health check: ${healthErr.message}`);
+        addDiagLog(`[ATS] Health check setup error: ${healthErr.message}`);
       }
 
-      addDiagLog("[MOBILE-DIAG-06] Health check setup completed. Execution continuing synchronously...");
-
-      addDiagLog("[MOBILE-DIAG-07] Before FormData creation.");
-      addDiagLog("[MOBILE-DIAG-BEFORE-FORM-DATA-CONSTRUCTOR] Instantiating FormData...");
+      addDiagLog("[ATS] Creating FormData");
       const formData = new FormData();
-      addDiagLog("[MOBILE-DIAG-AFTER-FORM-DATA-CONSTRUCTOR] FormData instantiated.");
+      addDiagLog("[ATS] FormData created");
       
-      addDiagLog("[MOBILE-DIAG-BEFORE-FILE-APPEND] Appending file...");
       formData.append('file', file);
-      addDiagLog("[MOBILE-DIAG-AFTER-FILE-APPEND] File appended.");
+      addDiagLog("[ATS] File appended");
       
-      addDiagLog("[MOBILE-DIAG-BEFORE-JD-APPEND] Appending job description...");
       formData.append('jobDescription', jobDescription);
-      addDiagLog("[MOBILE-DIAG-AFTER-JD-APPEND] Job description appended.");
+      addDiagLog("[ATS] JD appended");
 
-      addDiagLog("[MOBILE-DIAG-08] FormData created.");
-      
-      addDiagLog("[MOBILE-DIAG-BEFORE-FORM-DATA-INSPECTION] Inspecting FormData keys...");
-      try {
-        for (let key of (formData as any).keys()) {
-          addDiagLog(`[MOBILE-DIAG-08-KEY] FormData entry key: ${key}`);
-        }
-      } catch (fdErr: any) {
-        addDiagLog(`[MOBILE-DIAG-08-ERR] Failed to iterate keys: ${fdErr.message}`);
-      }
-      addDiagLog("[MOBILE-DIAG-AFTER-FORM-DATA-INSPECTION] FormData keys inspected.");
-
+      addDiagLog("[ATS] About to send POST /api/v1/resume/check");
       const targetEndpoint = `${API_BASE_URL}/api/v1/resume/check`;
-      addDiagLog(`[MOBILE-DIAG-09] Immediately before axios.post(). Params: ` +
-        `URL=${targetEndpoint}, ` +
-        `Method=POST, ` +
-        `FileName=${file.name}, ` +
-        `FileSize=${file.size} bytes, ` +
-        `FileType=${file.type}, ` +
-        `navigator.onLine=${navigator.onLine}, ` +
-        `AbortSignalAttached=false, ` +
-        `Timeout=120000ms`);
 
       try {
-        addDiagLog(`[MOBILE-DIAG-10] Invoking axios.post() to target: ${targetEndpoint}`);
-        addDiagLog(`[MOBILE-DIAG-BEFORE-AXIOS-POST] Triggering axios.post...`);
+        addDiagLog("[ATS] POST request started");
         const response = await axios.post<AnalysisResult>(targetEndpoint, formData, {
           timeout: 120000 // 120 seconds timeout to handle Render cold start wakeup times
         });
-        addDiagLog(`[MOBILE-DIAG-AFTER-AXIOS-POST] axios.post resolved.`);
+        addDiagLog("[ATS] Response received");
         
         const duration = Date.now() - startTime;
         addDiagLog(`[MOBILE-DIAG-11] POST success! Status: ${response.status}, Duration: ${duration}ms`);
@@ -210,7 +186,7 @@ function App() {
 
       } catch (err: any) {
         const duration = Date.now() - startTime;
-        addDiagLog(`[MOBILE-DIAG-12] POST error! Duration: ${duration}ms.`);
+        addDiagLog(`[ATS] Error caught with full safe details: ${err.message || err}`);
         
         // Detailed Axios error diagnostics (Phase 2):
         console.error(`[DIAGNOSTIC ERROR] Full Axios error:`, err);
@@ -260,6 +236,7 @@ function App() {
       }
     } catch (outerErr: any) {
       console.error("[OUTER DIAGNOSTIC ERROR] Caught uncaught error inside handleAnalyze:", outerErr);
+      addDiagLog(`[ATS] Error caught with full safe details (outer): ${outerErr.message}`);
       addDiagLog(`[OUTER-DIAG-ERROR] Uncaught JavaScript exception! Name: ${outerErr.name} | Message: ${outerErr.message} | Stack: ${outerErr.stack}`);
       setError(`Uncaught Client Error: ${outerErr.message}`);
       setShowProgressLoader(false);
